@@ -1,20 +1,18 @@
+# app/graph/nodes/planner.py
 import json
 import re
 import logging
 from langchain_openai import ChatOpenAI
 from app.config import settings
 from app.graph.state import PipelineState
-
-logger = logging.getLogger(__name__)
+from app.observability.logger import NodeLogger
 
 
 def run_planner(state: PipelineState) -> dict:
-    """
-    Query Planner Agent.
-    Takes brand profile and generates search queries to check visibility.
-    """
+    node_log = NodeLogger("planner", state["run_id"])
+    node_log.start(f"Planner started for domain: {state['profile']['domain']}")
+
     profile = state["profile"]
-    logger.info(f"Planner started for domain: {profile['domain']}")
 
     llm = ChatOpenAI(
         api_key=settings.openai_api_key,
@@ -42,10 +40,9 @@ def run_planner(state: PipelineState) -> dict:
 
     response = llm.invoke(prompt)
 
-    # Extract JSON array from response even if LLM adds extra text
     match = re.search(r'\[.*?\]', response.content, re.DOTALL)
     if not match:
-        logger.error(f"Planner could not parse LLM response: {response.content}")
+        node_log.failure("Planner failed to parse LLM response")
         return {
             "planned_queries": [],
             "status": "failed",
@@ -53,7 +50,7 @@ def run_planner(state: PipelineState) -> dict:
         }
 
     queries = json.loads(match.group())
-    logger.info(f"Planner generated {len(queries)} queries: {queries}")
+    node_log.success(f"Planner generated {len(queries)} queries")
 
     return {
         "planned_queries": queries,
