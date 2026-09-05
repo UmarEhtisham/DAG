@@ -2,20 +2,15 @@
 import logging
 from datetime import datetime
 from app.graph.state import PipelineState
-
-logger = logging.getLogger(__name__)
+from app.observability.logger import NodeLogger
 
 
 def run_fallback(state: PipelineState) -> dict:
-    """
-    Fallback Node.
-    Called when retrieval fails after all retries.
-    Returns a partial report with error details instead of crashing.
-    """
+    node_log = NodeLogger("fallback", state["run_id"])
+    node_log.start("Fallback triggered — pipeline encountered errors")
+
     profile = state["profile"]
     errors = state.get("errors", [])
-
-    logger.warning(f"Fallback triggered for {profile['domain']}. Errors: {errors}")
 
     final_report = {
         "profile": {
@@ -31,9 +26,11 @@ def run_fallback(state: PipelineState) -> dict:
             "average_opportunity_score": 0.0
         },
         "recommendations": [],
-        "human_readable_summary": f"Pipeline encountered errors and could not complete fully. Please retry.",
+        "human_readable_summary": "Pipeline encountered errors and could not complete fully. Please retry.",
         "errors": errors
     }
+
+    node_log.failure(f"Fallback completed. Errors: {len(errors)}")
 
     return {
         "final_report": final_report,
