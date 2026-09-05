@@ -2,26 +2,19 @@
 import logging
 from datetime import datetime
 from app.graph.state import PipelineState
-
-logger = logging.getLogger(__name__)
+from app.observability.logger import NodeLogger
 
 
 def run_reporter(state: PipelineState) -> dict:
-    """
-    Report Agent.
-    Assembles the final structured report from all agent outputs.
-    No LLM call needed — pure assembly of existing data.
-    """
+    node_log = NodeLogger("reporter", state["run_id"])
+    node_log.start("Reporter assembling final report")
+
     profile = state["profile"]
     insights = state["insights"]
     errors = state.get("errors", [])
 
-    logger.info(f"Reporter assembling final report for {profile['domain']}")
-
-    # Sort insights by opportunity score (highest first)
     sorted_insights = sorted(insights, key=lambda x: x["opportunity_score"], reverse=True)
 
-    # Build recommendations list
     recommendations = []
     for item in sorted_insights:
         rec = item.get("recommendation", {})
@@ -36,7 +29,6 @@ def run_reporter(state: PipelineState) -> dict:
             "priority": rec.get("priority", "medium")
         })
 
-    # Build human readable summary
     visible_count = sum(1 for i in insights if i["visibility_status"] == "visible")
     not_visible_count = sum(1 for i in insights if i["visibility_status"] == "not_visible")
     avg_opportunity = round(
@@ -67,7 +59,6 @@ TOP OPPORTUNITIES:
         for error in errors:
             summary += f"- {error}\n"
 
-    # Final report
     final_report = {
         "profile": {
             "name": profile["name"],
@@ -86,7 +77,7 @@ TOP OPPORTUNITIES:
         "errors": errors
     }
 
-    logger.info(f"Reporter completed. Status: {final_report['status']}")
+    node_log.success(f"Reporter completed. Status: {final_report['status']}")
 
     return {
         "final_report": final_report,
