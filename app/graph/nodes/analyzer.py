@@ -5,28 +5,20 @@ import logging
 from langchain_openai import ChatOpenAI
 from app.config import settings
 from app.graph.state import PipelineState
-
-logger = logging.getLogger(__name__)
+from app.observability.logger import NodeLogger
 
 
 def _calculate_opportunity_score(record: dict) -> float:
-    """
-    Calculate opportunity score for a query (0.0 - 1.0).
-    Higher score = more opportunity to improve visibility.
-    """
     score = 0.0
 
-    # Not visible in SERP = high opportunity
     if not record["domain_in_serp"]:
         score += 0.4
     elif record["serp_position"] and record["serp_position"] > 5:
         score += 0.2
 
-    # Not in AI Overview = opportunity
     if not record["domain_in_ai_overview"]:
         score += 0.3
 
-    # Not in LLM answers = opportunity
     if not record["domain_in_llm"]:
         score += 0.3
 
@@ -34,14 +26,12 @@ def _calculate_opportunity_score(record: dict) -> float:
 
 
 def run_analyzer(state: PipelineState) -> dict:
-    """
-    Analysis / Synthesis Agent.
-    Reasons over normalized data to produce insights and recommendations.
-    """
+    node_log = NodeLogger("analyzer", state["run_id"])
+    node_log.start(f"Analyzer starting for {len(state['normalized_data'])} records")
+
     normalized_data = state["normalized_data"]
     profile = state["profile"]
-
-    logger.info(f"Analyzer starting for {len(normalized_data)} records")
+    errors = state.get("errors", [])
 
     llm = ChatOpenAI(
         api_key=settings.openai_api_key,
@@ -82,7 +72,7 @@ def run_analyzer(state: PipelineState) -> dict:
 
         match = re.search(r'\{.*?\}', response.content, re.DOTALL)
         if not match:
-            logger.error(f"Analyzer could not parse response for query: {record['query']}")
+            errors.append(f"Analyzer failed to parse response for query: {record['query']}")
             continue
 
         recommendation = json.loads(match.group())
@@ -98,12 +88,10 @@ def run_analyzer(state: PipelineState) -> dict:
             "recommendation": recommendation
         })
 
-        logger.info(f"Query '{record['query']}' — opportunity score: {opportunity_score}")
-
-    logger.info(f"Analyzer completed. {len(insights)} insights generated.")
+    node_log.success(f"Analyzer completed. {len(insights)} insights generated")
 
     return {
         "insights": insights,
         "status": "running",
-        "errors": state.get("errors", [])
+        "errors": errors
     }
