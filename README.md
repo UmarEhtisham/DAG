@@ -54,9 +54,9 @@ graph TD;
 
 ## Setup
 
-### Requirements
+### Prerequisites
 - Python 3.12+
-- PostgreSQL
+- Docker Desktop (for PostgreSQL)
 - OpenAI API key
 - UV package manager
 
@@ -81,11 +81,13 @@ cp .env.example .env
 
 ### Database Setup
 
+**Option 1 — Docker (recommended):**
 ```bash
-# Start PostgreSQL (if using Docker)
 docker compose up -d
+```
 
-# Or if PostgreSQL is already installed
+**Option 2 — Local PostgreSQL:**
+```bash
 sudo service postgresql start
 sudo -u postgres psql -c "CREATE DATABASE search_intel;"
 sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
