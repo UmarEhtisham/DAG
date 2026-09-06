@@ -94,7 +94,7 @@ sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 ### Run
 
 ```bash
-uvicorn app.main:app --reload
+python main.py
 ```
 
 API docs available at: `http://localhost:8000/docs`
@@ -122,7 +122,7 @@ DATAFORSEO_LOGIN=your_login
 DATAFORSEO_PASSWORD=your_password
 ```
 
-This assessment uses mock mode by default. Mock responses simulate realistic DataForSEO API responses. Live mode is implemented but not tested with real credentials due to sandbox access limitations.
+This assessment uses mock mode by default. Mock responses simulate realistic DataForSEO API responses. Live mode is implemented based on official DataForSEO API documentation but has not been tested with real credentials — endpoint URLs and response parsing may require adjustment with actual API access.
 
 ## Failure Handling
 
@@ -177,7 +177,7 @@ uv run pytest tests/ -v
 - Tools are called programmatically rather than via LLM tool-calling (`@tool` decorator). In production, LLM would decide when and how to call tools.
 - `estimated_search_volume` and `competitive_difficulty` return 0 in mock mode.
 - No async/background processing — pipeline runs synchronously (10-30s per run).
-- Live DataForSEO endpoints implemented but not tested with real credentials.
+- Live DataForSEO endpoints implemented based on official API documentation but not tested with real credentials — may require adjustments with actual API access.
 
 ## What I Would Improve With More Time
 
